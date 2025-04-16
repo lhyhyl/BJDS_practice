@@ -1,5 +1,14 @@
 const { pool } = require("../config/database");
 
+// 添加调试代码
+console.log("数据库连接信息:");
+console.log(`Host: ${process.env.DB_HOST}`);
+console.log(`Port: ${process.env.DB_PORT}`);
+console.log(`User: ${process.env.DB_USER}`);
+console.log(`Database: ${process.env.DB_NAME}`);
+// 不打印密码，仅检查是否存在
+console.log(`Password exists: ${Boolean(process.env.DB_PASSWORD)}`);
+
 async function initDatabase() {
   try {
     // 创建数据库
@@ -12,137 +21,167 @@ async function initDatabase() {
         id INT PRIMARY KEY AUTO_INCREMENT,
         openid VARCHAR(50) UNIQUE NOT NULL COMMENT '微信openid',
         nickname VARCHAR(50) COMMENT '用户昵称',
-        avatar_url VARCHAR(255) COMMENT '头像URL',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        avatar VARCHAR(255) COMMENT '头像URL',
+        phone VARCHAR(20) COMMENT '手机号码',
+        totalQuestions INT DEFAULT 0 COMMENT '总答题数',
+        correctCount INT DEFAULT 0 COMMENT '答对题目数',
+        streak INT DEFAULT 0 COMMENT '连续学习天数',
+        lastLoginAt TIMESTAMP NULL COMMENT '最后登录时间',
+        settings JSON COMMENT '用户设置',
+        status VARCHAR(20) DEFAULT 'active' COMMENT '用户状态：active, disabled',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_user_openid (openid)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表'
     `);
 
-    // 创建分类表
+    // 创建科目表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS categories (
+      CREATE TABLE IF NOT EXISTS subjects (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        name VARCHAR(50) NOT NULL COMMENT '分类名称',
-        description TEXT COMMENT '分类描述',
-        sort_order INT DEFAULT 0 COMMENT '排序',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目分类表'
+        name VARCHAR(50) NOT NULL COMMENT '科目名称',
+        description TEXT COMMENT '科目描述',
+        icon VARCHAR(50) COMMENT '图标',
+        color VARCHAR(20) COMMENT '颜色',
+        type VARCHAR(50) COMMENT '类型',
+        orderIndex INT DEFAULT 0 COMMENT '排序',
+        status VARCHAR(20) DEFAULT 'active' COMMENT '状态：active, deleted 等',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_subject_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='科目表'
+    `);
+
+    // 创建章节表
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chapters (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        subjectId INT NOT NULL COMMENT '科目ID',
+        name VARCHAR(50) NOT NULL COMMENT '章节名称',
+        description TEXT COMMENT '章节描述',
+        orderIndex INT DEFAULT 0 COMMENT '排序',
+        status VARCHAR(20) DEFAULT 'active' COMMENT '状态：active, deleted 等',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (subjectId) REFERENCES subjects(id),
+        INDEX idx_chapter_subject (subjectId),
+        INDEX idx_chapter_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='章节表'
     `);
 
     // 创建题目表
     await pool.query(`
       CREATE TABLE IF NOT EXISTS questions (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        category_id INT NOT NULL COMMENT '分类ID',
-        type ENUM('single', 'multiple', 'judge') NOT NULL COMMENT '题目类型：单选/多选/判断',
+        subjectId INT NOT NULL COMMENT '科目ID',
+        chapterId INT NULL COMMENT '章节ID',
+        type ENUM('单选题', '多选题', '判断题', '填空题', '问答题') NOT NULL COMMENT '题目类型',
         content TEXT NOT NULL COMMENT '题目内容',
-        difficulty TINYINT DEFAULT 1 COMMENT '难度等级：1-5',
+        options JSON COMMENT '选项',
+        answer TEXT NOT NULL COMMENT '答案',
         analysis TEXT COMMENT '题目解析',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (category_id) REFERENCES categories(id)
+        difficulty ENUM('简单', '中等', '困难') DEFAULT '中等' COMMENT '难度等级',
+        status VARCHAR(20) DEFAULT 'active' COMMENT '状态：active, deleted 等',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (subjectId) REFERENCES subjects(id),
+        FOREIGN KEY (chapterId) REFERENCES chapters(id),
+        INDEX idx_question_subject (subjectId),
+        INDEX idx_question_chapter (chapterId),
+        INDEX idx_question_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
     `);
 
-    // 创建题目选项表
+    // 创建用户题目记录表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS question_options (
+      CREATE TABLE IF NOT EXISTS userQuestions (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        question_id INT NOT NULL COMMENT '题目ID',
-        option_id CHAR(1) NOT NULL COMMENT '选项ID：A/B/C/D等',
-        content TEXT NOT NULL COMMENT '选项内容',
-        is_correct BOOLEAN DEFAULT FALSE COMMENT '是否为正确答案',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目选项表'
+        userId INT NOT NULL COMMENT '用户ID',
+        questionId INT NOT NULL COMMENT '题目ID',
+        answer TEXT COMMENT '用户答案',
+        isCorrect BOOLEAN DEFAULT FALSE COMMENT '是否正确',
+        isWrong BOOLEAN DEFAULT FALSE COMMENT '是否错题',
+        timeSpent INT DEFAULT 0 COMMENT '答题用时(秒)',
+        lastPracticeAt TIMESTAMP COMMENT '最后练习时间',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (questionId) REFERENCES questions(id),
+        INDEX idx_user_question (userId, questionId)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户题目记录表'
     `);
 
-    // 创建题目图片表
+    // 创建练习记录表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS question_images (
+      CREATE TABLE IF NOT EXISTS practices (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        question_id INT NOT NULL COMMENT '题目ID',
-        image_url VARCHAR(255) NOT NULL COMMENT '图片URL',
-        sort_order INT DEFAULT 0 COMMENT '排序',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目图片表'
+        userId INT NOT NULL COMMENT '用户ID',
+        questionId INT NOT NULL COMMENT '题目ID',
+        answer TEXT COMMENT '用户答案',
+        isCorrect BOOLEAN DEFAULT FALSE COMMENT '是否正确',
+        timeSpent INT DEFAULT 0 COMMENT '答题用时(秒)',
+        mode VARCHAR(20) DEFAULT 'sequential' COMMENT '练习模式',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (questionId) REFERENCES questions(id),
+        INDEX idx_practice_user (userId),
+        INDEX idx_practice_question (questionId)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='练习记录表'
     `);
 
-    // 创建用户练习记录表
+    // 创建收藏表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_practice_records (
+      CREATE TABLE IF NOT EXISTS favorites (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL COMMENT '用户ID',
-        question_id INT NOT NULL COMMENT '题目ID',
-        is_correct BOOLEAN NOT NULL COMMENT '是否正确',
-        selected_options VARCHAR(50) COMMENT '用户选择的选项',
-        time_spent INT COMMENT '答题用时(秒)',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户练习记录表'
+        userId INT NOT NULL COMMENT '用户ID',
+        questionId INT NOT NULL COMMENT '题目ID',
+        note TEXT COMMENT '笔记',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (questionId) REFERENCES questions(id),
+        UNIQUE KEY unique_favorite (userId, questionId),
+        INDEX idx_favorite_user (userId)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收藏表'
     `);
 
-    // 创建用户收藏表
+    // 创建学习记录表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_favorites (
+      CREATE TABLE IF NOT EXISTS study_records (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL COMMENT '用户ID',
-        question_id INT NOT NULL COMMENT '题目ID',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (question_id) REFERENCES questions(id),
-        UNIQUE KEY unique_favorite (user_id, question_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表'
+        userId INT NOT NULL COMMENT '用户ID',
+        date DATE NOT NULL COMMENT '学习日期',
+        questionCount INT DEFAULT 0 COMMENT '当日答题数',
+        correctCount INT DEFAULT 0 COMMENT '当日答对题数',
+        timeSpent INT DEFAULT 0 COMMENT '学习时长(秒)',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        UNIQUE KEY unique_user_date (userId, date),
+        INDEX idx_study_user (userId),
+        INDEX idx_study_date (date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学习记录表'
     `);
 
-    // 创建用户错题本表
+    // 创建错题本表
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_wrong_questions (
+      CREATE TABLE IF NOT EXISTS error_book (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL COMMENT '用户ID',
-        question_id INT NOT NULL COMMENT '题目ID',
-        wrong_count INT DEFAULT 1 COMMENT '错误次数',
-        last_wrong_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '最近错误时间',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (question_id) REFERENCES questions(id),
-        UNIQUE KEY unique_wrong (user_id, question_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户错题本表'
-    `);
-
-    // 创建用户学习统计表
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_statistics (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL COMMENT '用户ID',
-        total_questions INT DEFAULT 0 COMMENT '总答题数',
-        correct_questions INT DEFAULT 0 COMMENT '正确答题数',
-        wrong_questions INT DEFAULT 0 COMMENT '错误答题数',
-        streak_days INT DEFAULT 0 COMMENT '连续学习天数',
-        last_practice_date DATE COMMENT '最后练习日期',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户学习统计表'
-    `);
-
-    // 创建题目报错表
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS question_reports (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL COMMENT '用户ID',
-        question_id INT NOT NULL COMMENT '题目ID',
-        report_type VARCHAR(50) NOT NULL COMMENT '报错类型',
-        report_content TEXT COMMENT '报错内容',
-        status ENUM('pending', 'resolved', 'rejected') DEFAULT 'pending' COMMENT '处理状态',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目报错表'
+        userId INT NOT NULL COMMENT '用户ID',
+        questionId INT NOT NULL COMMENT '题目ID',
+        lastAnswer TEXT COMMENT '最后一次回答',
+        addedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '加入错题本时间',
+        reviewCount INT DEFAULT 0 COMMENT '复习次数',
+        lastReviewAt TIMESTAMP NULL COMMENT '最后复习时间',
+        note TEXT COMMENT '笔记',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (questionId) REFERENCES questions(id),
+        UNIQUE KEY unique_error_book (userId, questionId),
+        INDEX idx_error_user (userId)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='错题本表'
     `);
 
     console.log("数据库表创建成功");

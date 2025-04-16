@@ -72,6 +72,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { request } from '@/utils/request';
+import { useUserStore } from '@/store/user';
+
+const userStore = useUserStore();
+const dailyQuestion = ref(null);
 
 // 热门分类数据
 const categories = ref([
@@ -124,11 +128,11 @@ const loadData = async () => {
       method: 'GET'
     });
     
-    if (categoryRes.data) {
+    if (categoryRes.code === 0 && categoryRes.data) {
       categories.value = categoryRes.data.map(item => ({
         id: item.id,
         name: item.name,
-        count: item.questionCount,
+        count: item.questionCount || 0,
         color: item.color || '#1890ff'
       }));
     }
@@ -138,18 +142,40 @@ const loadData = async () => {
       url: '/api/questions/daily',
       method: 'GET'
     });
+    console.log('每日一题响应:', dailyRes);
     
-    if (dailyRes.data) {
-      // 更新每日一题数据
+    if (dailyRes.code === 0 && dailyRes.data) {
       dailyQuestion.value = dailyRes.data;
+    } else {
+      console.error('每日一题返回格式不符:', dailyRes);
     }
     
+    // 若已登录，加载用户统计数据
+    const token = uni.getStorageSync('token');
+    if (token) {
+      try {
+        const statsRes = await request({
+          url: '/api/statistics',
+          method: 'GET'
+        });
+
+        if (statsRes.code === 0 && statsRes.data) {
+          // 更新store中的统计数据
+          userStore.statistics = {
+            totalQuestions: statsRes.data.totalQuestions || 0,
+            correctQuestions: statsRes.data.correctCount || 0,
+            correctRate: statsRes.data.correctRate || 0,
+            streak: statsRes.data.streak || 0
+          };
+          userStore.saveStatistics();
+        }
+      } catch (err) {
+        console.error('获取用户统计数据失败:', err);
+      }
+    }
   } catch (err) {
-    error.value = err.message;
-    uni.showToast({
-      title: '加载失败，请重试',
-      icon: 'none'
-    });
+    console.error('加载数据失败:', err);
+    error.value = err.message || '加载失败，请检查网络';
   } finally {
     loading.value = false;
   }

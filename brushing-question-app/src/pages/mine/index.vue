@@ -2,7 +2,7 @@
   <view class="container">
     <!-- 用户信息 -->
     <view class="user-card">
-      <image class="user-bg" src="/static/images/user-bg.jpg" mode="aspectFill"></image>
+      <image class="user-bg" src="/static/images/user-bg.png" mode="aspectFill"></image>
       <view class="user-info">
         <image class="avatar" :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
         <view class="user-details">

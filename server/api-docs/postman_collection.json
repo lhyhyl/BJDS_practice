@@ -1,0 +1,684 @@
+{
+  "info": {
+    "name": "刷题小程序 API2.0",
+    "description": "刷题小程序后端API接口文档，包含所有接口信息，可直接导入Postman使用",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "用户管理",
+      "description": "用户相关的API接口",
+      "item": [
+        {
+          "name": "自动登录(本机号码)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/auto-login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "auto-login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authResult\": \"mock_auth_result_from_device\"\n}"
+            },
+            "description": "使用设备号码一键登录，authResult为设备SDK返回的认证结果"
+          }
+        },
+        {
+          "name": "开发环境登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/dev-login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "dev-login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"test-device-123\"\n}"
+            },
+            "description": "开发环境测试使用的登录接口，仅在开发环境可用"
+          }
+        },
+        {
+          "name": "获取用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "获取当前登录用户的信息，需要认证"
+          }
+        },
+        {
+          "name": "更新用户设置",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "settings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": {\n    \"darkMode\": true,\n    \"notification\": true,\n    \"sound\": false\n  }\n}"
+            },
+            "description": "更新用户设置，需要认证"
+          }
+        },
+        {
+          "name": "更新用户信息",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"新昵称\",\n  \"avatar\": \"https://example.com/new-avatar.jpg\"\n}"
+            },
+            "description": "更新用户基础信息，需要认证"
+          }
+        },
+        {
+          "name": "获取用户统计数据",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "statistics"]
+            },
+            "description": "获取用户学习统计数据，需要认证"
+          }
+        },
+        {
+          "name": "获取用户特定科目统计数据",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/statistics/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "statistics", "1"]
+            },
+            "description": "获取用户在特定科目上的统计数据，需要认证"
+          }
+        },
+        {
+          "name": "更新用户统计数据",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "statistics"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectId\": 1,\n  \"questionCount\": 10,\n  \"correctCount\": 8,\n  \"timeSpent\": 600\n}"
+            },
+            "description": "更新用户的科目学习统计数据，需要认证"
+          }
+        }
+      ]
+    },
+    {
+      "name": "刷题",
+      "description": "刷题相关的API接口",
+      "item": [
+        {
+          "name": "获取科目列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subjects"]
+            },
+            "description": "获取所有可用的科目列表"
+          }
+        },
+        {
+          "name": "获取热门科目",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects/hot",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subjects", "hot"]
+            },
+            "description": "获取热门科目列表，根据题目数量排序"
+          }
+        },
+        {
+          "name": "获取章节列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects/1/chapters",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subjects", "1", "chapters"]
+            },
+            "description": "获取指定科目的章节列表"
+          }
+        },
+        {
+          "name": "获取题目列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/questions?subjectId=1&page=1&pageSize=10&mode=random",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions"],
+              "query": [
+                {
+                  "key": "subjectId",
+                  "value": "1",
+                  "description": "科目ID"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码，从1开始"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页数量"
+                },
+                {
+                  "key": "mode",
+                  "value": "random",
+                  "description": "获取模式：random(随机)或不填(顺序)"
+                }
+              ]
+            },
+            "description": "获取题目列表，可根据科目ID筛选，支持分页和随机获取"
+          }
+        },
+        {
+          "name": "获取每日推荐题目",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/daily?count=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", "daily"],
+              "query": [
+                {
+                  "key": "count",
+                  "value": "10",
+                  "description": "题目数量，默认10道"
+                }
+              ]
+            },
+            "description": "获取每日推荐题目，每天的推荐内容保持一致"
+          }
+        },
+        {
+          "name": "搜索题目",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/search?keyword=测试",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", "search"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "测试",
+                  "description": "搜索关键词"
+                }
+              ]
+            },
+            "description": "根据关键词搜索题目"
+          }
+        },
+        {
+          "name": "获取题目详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", "1"]
+            },
+            "description": "获取指定题目的详细信息"
+          }
+        },
+        {
+          "name": "提交答案",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "questions", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": 1,\n  \"answer\": \"A\",\n  \"timeSpent\": 30\n}"
+            },
+            "description": "提交题目答案，需要认证"
+          }
+        },
+        {
+          "name": "添加到收藏",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": 1,\n  \"note\": \"这是一道重要的题目\"\n}"
+            },
+            "description": "将题目添加到收藏，可添加笔记"
+          }
+        },
+        {
+          "name": "获取收藏列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码，从1开始"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页数量"
+                }
+              ]
+            },
+            "description": "获取用户收藏的题目列表"
+          }
+        },
+        {
+          "name": "取消收藏",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites", "1"]
+            },
+            "description": "取消收藏指定的题目"
+          }
+        },
+        {
+          "name": "获取错题本",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/errorbook?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "errorbook"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码，从1开始"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页数量"
+                }
+              ]
+            },
+            "description": "获取用户的错题本"
+          }
+        },
+        {
+          "name": "获取错题列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/wrongquestions?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wrongquestions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码，从1开始"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页数量"
+                }
+              ]
+            },
+            "description": "获取用户错题列表"
+          }
+        },
+        {
+          "name": "开始练习",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "start"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectId\": 1,\n  \"questionCount\": 10\n}"
+            },
+            "description": "开始新的练习，返回练习ID和题目列表"
+          }
+        },
+        {
+          "name": "完成练习",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/1/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "1", "complete"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"totalTime\": 600,\n  \"correctCount\": 8,\n  \"wrongCount\": 2\n}"
+            },
+            "description": "完成练习，提交练习结果"
+          }
+        }
+      ]
+    },
+    {
+      "name": "学习统计",
+      "description": "学习统计相关的API接口",
+      "item": [
+        {
+          "name": "获取整体学习统计",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "statistics"]
+            },
+            "description": "获取用户整体学习统计信息"
+          }
+        },
+        {
+          "name": "获取学习进度",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/statistics/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "statistics", "progress"]
+            },
+            "description": "获取用户各科目学习进度"
+          }
+        },
+        {
+          "name": "获取科目统计",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/statistics/subject/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "statistics", "subject", "1"]
+            },
+            "description": "获取指定科目的学习统计信息"
+          }
+        }
+      ]
+    },
+    {
+      "name": "系统设置",
+      "description": "系统相关的API接口",
+      "item": [
+        {
+          "name": "获取系统配置",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/system/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "config"]
+            },
+            "description": "获取系统配置信息，如版本号、公告等"
+          }
+        },
+        {
+          "name": "获取协议内容",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/system/agreement?type=user",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "agreement"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "user",
+                  "description": "协议类型：user(用户协议)/privacy(隐私政策)"
+                }
+              ]
+            },
+            "description": "获取用户协议或隐私政策内容"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "API基础URL"
+    },
+    {
+      "key": "token",
+      "value": "your-jwt-token",
+      "type": "string",
+      "description": "JWT认证令牌"
+    }
+  ]
+} 

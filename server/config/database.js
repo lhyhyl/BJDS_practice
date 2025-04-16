@@ -1,6 +1,15 @@
 const { Sequelize } = require("sequelize");
 const mysql = require("mysql2/promise");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+
+// 添加调试信息
+console.log("Database.js - 环境变量加载情况:");
+console.log(`Host: ${process.env.DB_HOST}`);
+console.log(`Port: ${process.env.DB_PORT}`);
+console.log(`User: ${process.env.DB_USER}`);
+console.log(`Database: ${process.env.DB_NAME}`);
+console.log(`Password exists: ${Boolean(process.env.DB_PASSWORD)}`);
 
 // Sequelize配置
 const sequelize = new Sequelize(
@@ -40,6 +49,11 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  connectTimeout: 60000,
+  acquireTimeout: 60000,
+  timeout: 60000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
 module.exports = {

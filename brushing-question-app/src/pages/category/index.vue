@@ -141,11 +141,11 @@ const loadData = async () => {
       method: 'GET'
     });
     
-    if (hotRes.data) {
+    if (hotRes.code === 0 && hotRes.data) {
       hotCategories.value = hotRes.data.map(item => ({
         id: item.id,
         name: item.name,
-        count: item.questionCount,
+        count: item.questionCount || 0,
         color: item.color || '#1890ff'
       }));
     }
@@ -156,11 +156,11 @@ const loadData = async () => {
       method: 'GET'
     });
     
-    if (categoryRes.data) {
+    if (categoryRes.code === 0 && categoryRes.data) {
       categories.value = categoryRes.data.map(item => ({
         id: item.id,
         name: item.name,
-        count: item.questionCount,
+        count: item.questionCount || 0,
         progress: item.progress || 0,
         icon: item.icon || '题',
         color: item.color || 'rgba(24, 144, 255, 0.1)',
@@ -196,11 +196,11 @@ const handleSearch = async () => {
       }
     });
     
-    if (res.data) {
+    if (res.code === 0 && res.data) {
       // 更新分类数据为搜索结果
       categories.value = res.data.map(item => ({
         id: item.id,
-        name: item.title,
+        name: item.content.substring(0, 20) + '...',
         count: 1,
         progress: 0,
         icon: '搜',

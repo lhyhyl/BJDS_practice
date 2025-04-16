@@ -1,14 +1,19 @@
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../middlewares/authMiddleware");
 const favoriteController = require("../controllers/favoriteController");
 
-// 获取收藏列表
-router.get("/", favoriteController.getFavorites);
+// 获取收藏夹列表
+router.get("/", authMiddleware, favoriteController.getFavorites);
 
 // 添加收藏
-router.post("/", favoriteController.addFavorite);
+router.post("/", authMiddleware, favoriteController.addFavorite);
 
 // 删除收藏
-router.delete("/:id", favoriteController.deleteFavorite);
+router.delete(
+  "/:questionId",
+  authMiddleware,
+  favoriteController.deleteFavorite
+);
 
 module.exports = router;

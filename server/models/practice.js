@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { sequelize } = require("../config/database");
 
 const Practice = sequelize.define(
   "Practice",
@@ -12,30 +12,29 @@ const Practice = sequelize.define(
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "users",
-        key: "id",
-      },
     },
     questionId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "questions",
-        key: "id",
-      },
     },
-    userAnswer: {
-      type: DataTypes.JSON,
-      allowNull: false,
+    answer: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     isCorrect: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
+      defaultValue: false,
     },
     timeSpent: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    mode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "sequential",
     },
   },
   {

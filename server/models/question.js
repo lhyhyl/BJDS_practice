@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { sequelize } = require("../config/database");
 
 const Question = sequelize.define(
   "Question",
@@ -10,8 +10,16 @@ const Question = sequelize.define(
       autoIncrement: true,
     },
     type: {
-      type: DataTypes.ENUM("single", "multiple", "judge"),
+      type: DataTypes.ENUM("单选题", "多选题", "判断题", "填空题", "问答题"),
       allowNull: false,
+    },
+    subjectId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    chapterId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     content: {
       type: DataTypes.TEXT,
@@ -19,23 +27,23 @@ const Question = sequelize.define(
     },
     options: {
       type: DataTypes.JSON,
+      allowNull: true,
+    },
+    answer: {
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     analysis: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    category: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     difficulty: {
-      type: DataTypes.INTEGER,
-      defaultValue: 1,
+      type: DataTypes.ENUM("简单", "中等", "困难"),
+      defaultValue: "中等",
     },
-    images: {
-      type: DataTypes.JSON,
-      defaultValue: [],
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: "active",
     },
   },
   {

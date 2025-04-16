@@ -23,26 +23,26 @@ const tabList = [
   {
     text: '首页',
     url: '/pages/index/index',
-    icon: '/static/images/tabbar/home.png',
-    selectedIcon: '/static/images/tabbar/home-active.png'
+    icon: '/static/images/home.png',
+    selectedIcon: '/static/images/home-active.png'
   },
   {
     text: '分类',
     url: '/pages/category/index',
-    icon: '/static/images/tabbar/category.png',
-    selectedIcon: '/static/images/tabbar/category-active.png'
+    icon: '/static/images/category.png',
+    selectedIcon: '/static/images/category-active.png'
   },
   {
     text: '练习',
     url: '/pages/practice/index',
-    icon: '/static/images/tabbar/practice.png',
-    selectedIcon: '/static/images/tabbar/practice-active.png'
+    icon: '/static/images/practice.png',
+    selectedIcon: '/static/images/practice-active.png'
   },
   {
     text: '我的',
     url: '/pages/mine/index',
-    icon: '/static/images/tabbar/mine.png',
-    selectedIcon: '/static/images/tabbar/mine-active.png'
+    icon: '/static/images/mine.png',
+    selectedIcon: '/static/images/mine-active.png'
   }
 ];
 

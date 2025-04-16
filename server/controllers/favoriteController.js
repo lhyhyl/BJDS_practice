@@ -1,108 +1,116 @@
-const { Favorite, Question, Subject } = require('../models');
+const { Favorite, Question } = require("../models");
+const logger = require("../utils/logger");
 
-class FavoriteController {
-  // 获取收藏列表
-  async getFavorites(req, res) {
-    try {
-      const { page = 1, pageSize = 10 } = req.query;
-      const userId = req.user.id;
+/**
+ * 获取用户收藏的问题列表
+ */
+exports.getFavorites = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const offset = (page - 1) * pageSize;
 
-      const { count, rows } = await Favorite.findAndCountAll({
-        where: { userId },
-        include: [{
+    const { count, rows } = await Favorite.findAndCountAll({
+      where: { userId },
+      include: [
+        {
           model: Question,
-          include: [{
-            model: Subject,
-            attributes: ['name']
-          }]
-        }],
-        order: [['createdAt', 'DESC']],
-        limit: pageSize,
-        offset: (page - 1) * pageSize
-      });
+          attributes: [
+            "id",
+            "content",
+            "options",
+            "answer",
+            "analysis",
+            "subjectId",
+            "difficulty",
+          ],
+        },
+      ],
+      limit: pageSize,
+      offset,
+      distinct: true,
+    });
 
-      const favorites = rows.map(record => ({
-        id: record.id,
-        questionId: record.questionId,
-        createTime: record.createdAt,
-        question: {
-          id: record.Question.id,
-          content: record.Question.content,
-          options: record.Question.options,
-          answer: record.Question.answer,
-          analysis: record.Question.analysis,
-          subject: record.Question.Subject.name
-        }
-      }));
-
-      res.json({
-        code: 200,
-        data: {
-          total: count,
-          list: favorites
-        }
-      });
-    } catch (error) {
-      console.error('Get favorites error:', error);
-      res.status(500).json({ code: 500, message: '获取收藏列表失败' });
-    }
+    return res.json({
+      success: true,
+      data: {
+        total: count,
+        items: rows,
+        page,
+        pageSize,
+      },
+    });
+  } catch (error) {
+    logger.error("获取收藏问题失败:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "获取收藏问题失败" });
   }
+};
 
-  // 添加收藏
-  async addFavorite(req, res) {
-    try {
-      const { questionId } = req.body;
-      const userId = req.user.id;
+/**
+ * 添加问题到收藏夹
+ */
+exports.addFavorite = async (req, res) => {
+  try {
+    const { questionId } = req.body;
+    const userId = req.user.id;
 
-      const question = await Question.findByPk(questionId);
-      if (!question) {
-        return res.status(404).json({ code: 404, message: '题目不存在' });
-      }
-
-      const [favorite, created] = await Favorite.findOrCreate({
-        where: { userId, questionId },
-        defaults: { userId, questionId }
-      });
-
-      if (!created) {
-        return res.status(400).json({ code: 400, message: '已经收藏过该题目' });
-      }
-
-      res.json({
-        code: 200,
-        message: '收藏成功'
-      });
-    } catch (error) {
-      console.error('Add favorite error:', error);
-      res.status(500).json({ code: 500, message: '收藏失败' });
+    if (!questionId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "问题ID不能为空" });
     }
-  }
 
-  // 取消收藏
-  async deleteFavorite(req, res) {
-    try {
-      const { id } = req.params;
-      const userId = req.user.id;
-
-      const favorite = await Favorite.findOne({
-        where: { id, userId }
-      });
-
-      if (!favorite) {
-        return res.status(404).json({ code: 404, message: '收藏记录不存在' });
-      }
-
-      await favorite.destroy();
-
-      res.json({
-        code: 200,
-        message: '取消收藏成功'
-      });
-    } catch (error) {
-      console.error('Delete favorite error:', error);
-      res.status(500).json({ code: 500, message: '取消收藏失败' });
+    // 检查问题是否存在
+    const question = await Question.findByPk(questionId);
+    if (!question) {
+      return res.status(404).json({ success: false, message: "问题不存在" });
     }
-  }
-}
 
-module.exports = new FavoriteController(); 
+    // 检查是否已收藏
+    const existingFavorite = await Favorite.findOne({
+      where: { userId, questionId },
+    });
+
+    if (existingFavorite) {
+      return res
+        .status(400)
+        .json({ success: false, message: "该问题已在收藏夹中" });
+    }
+
+    // 创建收藏记录
+    await Favorite.create({ userId, questionId });
+
+    return res.json({ success: true, message: "收藏成功" });
+  } catch (error) {
+    logger.error("添加收藏失败:", error);
+    return res.status(500).json({ success: false, message: "添加收藏失败" });
+  }
+};
+
+/**
+ * 从收藏夹中删除问题
+ */
+exports.deleteFavorite = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const userId = req.user.id;
+
+    const result = await Favorite.destroy({
+      where: { userId, questionId },
+    });
+
+    if (result === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "收藏记录不存在" });
+    }
+
+    return res.json({ success: true, message: "取消收藏成功" });
+  } catch (error) {
+    logger.error("删除收藏失败:", error);
+    return res.status(500).json({ success: false, message: "删除收藏失败" });
+  }
+};

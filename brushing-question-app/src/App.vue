@@ -18,6 +18,12 @@ export default {
       console.error('Store初始化失败:', error);
     }
 
+    // 初始化用户信息
+    userStore.initUserFromStorage();
+    
+    // 检查登录状态
+    await this.checkLoginStatus();
+
     uni.addInterceptor('navigateTo', {
       invoke(params) {
         console.log('navigateTo拦截:', params.url);
@@ -49,6 +55,36 @@ export default {
   },
   onHide: function() {
     console.log('App Hide');
+  },
+  methods: {
+    // 检查登录状态
+    async checkLoginStatus() {
+      const userStore = useUserStore();
+      const token = uni.getStorageSync('token');
+      
+      if (!token) {
+        // 如果不是登录页，则跳转到登录页
+        const pages = getCurrentPages();
+        const currentPage = pages[pages.length - 1];
+        
+        if (currentPage && !currentPage.route.includes('/pages/login/')) {
+          uni.redirectTo({
+            url: '/pages/login/index'
+          });
+        }
+      } else {
+        // 验证token有效性
+        try {
+          await userStore.checkLoginStatus();
+        } catch (error) {
+          console.error('验证token失败', error);
+          // 验证失败，跳转到登录页
+          uni.redirectTo({
+            url: '/pages/login/index'
+          });
+        }
+      }
+    }
   }
 };
 </script>

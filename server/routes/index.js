@@ -3,19 +3,21 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
 
 // 导入路由模块
-const userRoutes = require("./user");
+const userRoutes = require("./userRoutes");
 const questionRoutes = require("./question");
 const subjectRoutes = require("./subject");
-const errorRoutes = require("./error");
+const errorBookRoutes = require("./errorBook");
 const favoriteRoutes = require("./favorite");
 const statisticsRoutes = require("./statistics");
+const wrongQuestionRoutes = require("./wrongQuestionRoutes");
 
 // 注册路由
 router.use("/user", userRoutes);
 router.use("/questions", questionRoutes);
 router.use("/subjects", subjectRoutes);
-router.use("/errors", errorRoutes);
-router.use("/favorites", favoriteRoutes);
-router.use("/statistics", statisticsRoutes);
+router.use("/errorbook", authMiddleware, errorBookRoutes);
+router.use("/favorites", authMiddleware, favoriteRoutes);
+router.use("/statistics", authMiddleware, statisticsRoutes);
+router.use("/wrongquestions", authMiddleware, wrongQuestionRoutes);
 
 module.exports = router;

@@ -1,5 +1,15 @@
 <template>
   <view class="container">
+    <!-- 顶部导航栏 -->
+    <view class="top-nav">
+      <view class="back-btn" @click="goBack">
+        <text class="back-icon">&#xe60e;</text>
+        <text>返回</text>
+      </view>
+      <view class="title">练习题</view>
+      <view class="placeholder"></view>
+    </view>
+
     <!-- 加载状态 -->
     <view class="loading" v-if="loading">
       <text>加载中...</text>
@@ -31,28 +41,18 @@
 
       <!-- 选项 -->
       <view class="options">
-        <view 
-          v-for="(option, index) in currentQuestion.options" 
-          :key="index"
-          class="option-item"
-          :class="{
+        <view v-for="(option, index) in currentQuestion.options" :key="index" class="option-item" :class="{
             'selected': selectedAnswer === option,
             'correct': showAnswer && option === currentQuestion.answer,
             'wrong': showAnswer && selectedAnswer === option && option !== currentQuestion.answer
-          }"
-          @click="selectAnswer(option)"
-        >
+}" @click="selectAnswer(option)">
           <text class="option-text">{{ option }}</text>
         </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="action-buttons">
-        <button 
-          class="submit-btn" 
-          :disabled="!selectedAnswer || showAnswer"
-          @click="submitAnswer"
-        >
+        <button class="submit-btn" :disabled="!selectedAnswer || showAnswer" @click="submitAnswer">
           {{ showAnswer ? '下一题' : '提交答案' }}
         </button>
         <button class="report-btn" @click="reportQuestion">题目报错</button>
@@ -93,11 +93,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
 import { useQuestionStore } from '@/store/question';
 import { useUserStore } from '@/store/user';
-
 const questionStore = useQuestionStore();
 const userStore = useUserStore();
 
@@ -118,37 +117,54 @@ const loading = ref(true);
 // 计时器
 const timer = ref(null);
 
+// 弹窗引用
+const completePopup = ref(null);
+
 // 计算当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {});
 
+console.log('currentQuestion', currentQuestion.value);
 // 加载页面参数
 onLoad((options) => {
   console.log('接收到practice/do页面参数:', options); // 添加日志用于调试
-  
+
   if (options.mode) {
     mode.value = options.mode;
   }
-  
+
   if (options.category) {
     category.value = options.category;
   }
-  
+
   if (options.name) {
     categoryName.value = decodeURIComponent(options.name);
   }
-  
+
   if (options.questionId) {
     questionId.value = options.questionId;
   }
-  
+
   if (options.lastIndex) {
     lastIndex.value = parseInt(options.lastIndex);
   }
-  
+
   // 延迟加载题目，避免闪屏
   setTimeout(() => {
     loadQuestions();
   }, 300);
+});
+
+// 监听弹窗关闭事件
+onMounted(() => {
+  // 需要在模板引用可用后设置弹窗关闭事件
+  nextTick(() => {
+    if (completePopup.value) {
+      completePopup.value.$on('close', () => {
+        // 弹窗关闭时返回上一级
+        navigateBackOrHome();
+      });
+    }
+  });
 });
 
 // 页面卸载时
@@ -162,7 +178,7 @@ onUnload(() => {
 // 加载题目数据
 async function loadQuestions() {
   loading.value = true;
-  
+
   try {
     // 显示加载提示
     uni.showLoading({
@@ -171,7 +187,7 @@ async function loadQuestions() {
     });
 
     const questionList = await questionStore.loadQuestions(mode.value, category.value);
-    
+    console.log('questionList', questionList);
     if (!questionList || questionList.length === 0) {
       uni.showToast({
         title: '暂无题目',
@@ -183,22 +199,22 @@ async function loadQuestions() {
       }, 2000);
       return;
     }
-    
+
     questions.value = questionList;
-    
+
     // 如果有上次的位置，继续上次的进度
     if (lastIndex.value > 0 && lastIndex.value < questions.value.length) {
       currentIndex.value = lastIndex.value;
     } else {
       currentIndex.value = 0;
     }
-    
+
     showAnswer.value = false;
     selectedAnswer.value = '';
-    
+
     // 开始计时
     startTimer();
-    
+
   } catch (error) {
     console.error('加载题目失败:', error);
     uni.showToast({
@@ -265,7 +281,22 @@ function restartPractice() {
 
 // 返回首页
 function goBack() {
-  uni.navigateBack();
+  // 使用navigateBackOrHome函数处理返回
+  navigateBackOrHome();
+}
+
+// 处理返回逻辑
+function navigateBackOrHome() {
+  // 尝试返回上一页
+  const pages = getCurrentPages();
+  if (pages.length > 1) {
+    uni.navigateBack();
+  } else {
+    // 如果没有上一页，则返回首页
+    uni.switchTab({
+      url: '/pages/index/index'
+    });
+  }
 }
 
 // 开始计时
@@ -285,7 +316,7 @@ function saveProgress() {
       lastIndex: currentIndex.value,
       progress: Math.round((currentIndex.value / questions.value.length) * 100)
     };
-    
+
     uni.setStorageSync('lastStudyRecord', JSON.stringify(record));
   }
 }
@@ -299,7 +330,7 @@ function getCategoryName(categoryId) {
     'database': '数据库',
     'network': '计算机网络'
   };
-  
+
   return categories[categoryId] || categoryId;
 }
 </script>
@@ -312,6 +343,36 @@ function getCategoryName(categoryId) {
   background-color: #f8f8f8;
 }
 
+/* 顶部导航栏样式 */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10rpx 20rpx;
+  background-color: #fff;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  padding: 10rpx;
+}
+
+.back-icon {
+  font-family: 'iconfont';
+  margin-right: 6rpx;
+  font-size: 32rpx;
+}
+
+.title {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.placeholder {
+  width: 60rpx;
+}
 .loading {
   flex: 1;
   display: flex;
@@ -338,15 +399,6 @@ function getCategoryName(categoryId) {
 .loading-text {
   color: #999;
   font-size: 28rpx;
-}
-
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20rpx;
-  background-color: #fff;
-  border-bottom: 1rpx solid #f0f0f0;
 }
 
 .progress-info {

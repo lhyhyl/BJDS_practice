@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { request } from "../utils/request";
 
 export const useQuestionStore = defineStore("question", {
   state: () => ({
@@ -17,25 +18,37 @@ export const useQuestionStore = defineStore("question", {
     // 加载题目
     async loadQuestions(mode, category) {
       try {
-        // 模拟API请求
         console.log(`加载题目：模式=${mode}, 分类=${category}`);
 
-        // 根据模式和分类获取不同题目
-        let questions = [];
+        // 使用真实API请求
+        let url = "/api/questions";
+        let params = {};
 
-        // 模拟数据
-        if (mode === "random") {
-          questions = this.generateMockQuestions(10);
-        } else if (mode === "wrong") {
-          questions = this.generateMockQuestions(5, true);
+        if (mode === "wrong") {
+          url = "/api/wrongquestions";
         } else if (mode === "favorite") {
-          questions = this.generateMockQuestions(8, false, true);
+          url = "/api/favorites";
+        } else if (mode === "daily") {
+          url = "/api/questions/daily";
         } else {
-          questions = this.generateMockQuestions(15);
+          // 普通模式，可以按分类筛选
+          if (category && category !== "all") {
+            params.subjectId = category;
+          }
         }
 
-        this.questions = questions;
-        return questions;
+        const response = await request({
+          url,
+          method: "GET",
+          data: params,
+        });
+        if (response.code === 0 && response.data) {
+          this.questions = response.data;
+          console.log("this.questions", this.questions);
+          return response.data;
+        }
+
+        return [];
       } catch (error) {
         console.error("加载题目失败:", error);
         uni.showToast({
@@ -47,24 +60,23 @@ export const useQuestionStore = defineStore("question", {
     },
 
     // 检查答案
-    checkAnswer(questionId, selectedOptions) {
+    async checkAnswer(questionId, selectedOptions) {
       try {
-        const question = this.questions.find((q) => q.id === questionId);
-        if (!question) return false;
+        const response = await request({
+          url: "/api/questions/submit",
+          method: "POST",
+          data: {
+            questionId,
+            answer: Array.isArray(selectedOptions)
+              ? selectedOptions.join(",")
+              : selectedOptions,
+          },
+        });
 
-        // 获取正确选项
-        const correctOptions = question.options
-          .filter((opt) => opt.isCorrect)
-          .map((opt) => opt.id);
-
-        // 判断答案是否正确
-        if (correctOptions.length !== selectedOptions.length) return false;
-
-        // 检查所有选择的选项是否都正确
-        return (
-          selectedOptions.every((option) => correctOptions.includes(option)) &&
-          correctOptions.every((option) => selectedOptions.includes(option))
-        );
+        if (response.code === 0) {
+          return response.data.isCorrect;
+        }
+        return false;
       } catch (error) {
         console.error("检查答案失败:", error);
         return false;
@@ -72,42 +84,80 @@ export const useQuestionStore = defineStore("question", {
     },
 
     // 添加到错题本
-    addToWrongQuestions(questionId) {
-      if (!this.wrongQuestions.includes(questionId)) {
-        this.wrongQuestions.push(questionId);
-        // 存储到本地
-        this.saveWrongQuestions();
+    async addToWrongQuestions(questionId) {
+      try {
+        const response = await request({
+          url: "/api/errorbook",
+          method: "POST",
+          data: { questionId },
+        });
+
+        if (response.code === 0) {
+          if (!this.wrongQuestions.includes(questionId)) {
+            this.wrongQuestions.push(questionId);
+          }
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("添加错题失败:", error);
+        return false;
       }
     },
 
-    // 保存错题本
-    saveWrongQuestions() {
+    // 从本地加载错题本
+    loadWrongQuestions() {
       try {
-        uni.setStorageSync(
-          "wrongQuestions",
-          JSON.stringify(this.wrongQuestions)
-        );
+        const wrongQuestionsStr = uni.getStorageSync("wrongQuestions");
+        if (wrongQuestionsStr) {
+          this.wrongQuestions = JSON.parse(wrongQuestionsStr);
+        }
       } catch (error) {
-        console.error("保存错题本失败:", error);
+        console.error("加载错题本失败:", error);
       }
     },
 
     // 切换收藏状态
-    toggleFavorite(questionId) {
-      const index = this.favoriteQuestions.indexOf(questionId);
-      if (index === -1) {
-        // 添加收藏
-        this.favoriteQuestions.push(questionId);
-      } else {
-        // 取消收藏
-        this.favoriteQuestions.splice(index, 1);
-      }
+    async toggleFavorite(questionId) {
+      try {
+        const isFavorite = this.favoriteQuestions.includes(questionId);
 
-      // 存储到本地
-      this.saveFavorites();
+        if (isFavorite) {
+          // 取消收藏
+          const response = await request({
+            url: `/api/favorites/${questionId}`,
+            method: "DELETE",
+          });
+
+          if (response.code === 0) {
+            const index = this.favoriteQuestions.indexOf(questionId);
+            if (index !== -1) {
+              this.favoriteQuestions.splice(index, 1);
+            }
+          }
+        } else {
+          // 添加收藏
+          const response = await request({
+            url: "/api/favorites",
+            method: "POST",
+            data: { questionId },
+          });
+
+          if (response.code === 0) {
+            this.favoriteQuestions.push(questionId);
+          }
+        }
+
+        // 保存到本地
+        this.saveFavorites();
+        return !isFavorite;
+      } catch (error) {
+        console.error("操作收藏失败:", error);
+        return false;
+      }
     },
 
-    // 保存收藏
+    // 保存收藏到本地缓存
     saveFavorites() {
       try {
         uni.setStorageSync(
@@ -119,20 +169,31 @@ export const useQuestionStore = defineStore("question", {
       }
     },
 
+    // 从本地加载收藏
+    loadFavorites() {
+      try {
+        const favoritesStr = uni.getStorageSync("favoriteQuestions");
+        if (favoritesStr) {
+          this.favoriteQuestions = JSON.parse(favoritesStr);
+        }
+      } catch (error) {
+        console.error("加载收藏失败:", error);
+      }
+    },
+
     // 搜索题目
     async searchQuestions(keyword) {
       try {
-        console.log(`搜索题目：${keyword}`);
-        // 模拟搜索请求
-        const results = this.generateMockQuestions(5).map((q) => {
-          // 在题目内容中添加关键词以模拟匹配
-          return {
-            ...q,
-            content: `${keyword}相关的${q.content}`,
-          };
+        const response = await request({
+          url: "/api/questions/search",
+          method: "GET",
+          data: { keyword },
         });
 
-        return results;
+        if (response.code === 0 && response.data) {
+          return response.data;
+        }
+        return [];
       } catch (error) {
         console.error("搜索题目失败:", error);
         return [];
@@ -140,26 +201,30 @@ export const useQuestionStore = defineStore("question", {
     },
 
     // 按分类获取题目
-    async getQuestionsByCategory(categoryId, page, pageSize) {
+    async getQuestionsByCategory(categoryId, page = 1, pageSize = 20) {
       try {
-        console.log(
-          `获取分类题目：分类=${categoryId}, 页码=${page}, 每页数量=${pageSize}`
-        );
+        const response = await request({
+          url: "/api/questions",
+          method: "GET",
+          data: {
+            subjectId: categoryId,
+            page,
+            pageSize,
+          },
+        });
 
-        // 模拟分页数据
-        const totalCount = 100;
-        const questions = this.generateMockQuestions(
-          pageSize,
-          false,
-          false,
-          categoryId
-        );
-        const hasMore = page * pageSize < totalCount;
+        if (response.code === 0 && response.data) {
+          return {
+            questions: response.data.list || [],
+            hasMore: response.data.hasMore || false,
+            total: response.data.total || 0,
+          };
+        }
 
         return {
-          questions,
-          hasMore,
-          total: totalCount,
+          questions: [],
+          hasMore: false,
+          total: 0,
         };
       } catch (error) {
         console.error("获取分类题目失败:", error);
@@ -174,144 +239,27 @@ export const useQuestionStore = defineStore("question", {
     // 获取分类进度
     async getCategoryProgress() {
       try {
-        // 修改为计算机专业科目的进度
-        return {
-          // 数据结构
-          'datastructure_linear': 45,
-          'datastructure_tree': 30,
-          'datastructure_graph': 15,
-          'datastructure_algorithm': 20,
-          
-          // 操作系统
-          'os_process': 35,
-          'os_memory': 25,
-          'os_file': 40,
-          'os_io': 15,
-          
-          // 计算机网络
-          'network_base': 50,
-          'network_tcp': 30,
-          'network_application': 25,
-          'network_security': 10,
-          
-          // 计算机组成原理
-          'architecture_cpu': 20,
-          'architecture_memory': 15,
-          'architecture_io': 35,
-          'architecture_bus': 30,
-        };
+        const response = await request({
+          url: "/api/statistics/progress",
+          method: "GET",
+        });
+
+        if (response.code === 0 && response.data) {
+          this.categoryProgress = response.data;
+          return response.data;
+        }
+        return {};
       } catch (error) {
         console.error("获取分类进度失败:", error);
         return {};
       }
     },
 
-    // 生成模拟题目数据
-    generateMockQuestions(
-      count = 10,
-      isWrong = false,
-      isFavorite = false,
-      categoryId = null
-    ) {
-      const questions = [];
-      const types = ["single", "multiple", "judge"];
-      
-      // 修改分类为计算机专业科目
-      const categories = {
-        // 数据结构
-        'datastructure': '数据结构',
-        'datastructure_linear': '线性数据结构',
-        'datastructure_tree': '树结构',
-        'datastructure_graph': '图论',
-        'datastructure_algorithm': '算法设计',
-        
-        // 操作系统
-        'os': '操作系统',
-        'os_process': '进程与线程',
-        'os_memory': '内存管理',
-        'os_file': '文件系统',
-        'os_io': 'I/O系统',
-        
-        // 计算机网络
-        'network': '计算机网络',
-        'network_base': '网络基础',
-        'network_tcp': 'TCP/IP协议',
-        'network_application': '应用层协议',
-        'network_security': '网络安全',
-        
-        // 计算机组成原理
-        'architecture': '计算机组成原理',
-        'architecture_cpu': 'CPU与指令系统',
-        'architecture_memory': '存储系统',
-        'architecture_io': '输入输出系统',
-        'architecture_bus': '总线结构'
-      };
-
-      for (let i = 0; i < count; i++) {
-        const id = `q${Date.now() + i}`;
-        const type = types[Math.floor(Math.random() * types.length)];
-        const difficulty = Math.floor(Math.random() * 5) + 1;
-
-        let category =
-          categoryId ||
-          Object.keys(categories)[
-            Math.floor(Math.random() * Object.keys(categories).length)
-          ];
-        let categoryName = categories[category] || "未知分类";
-
-        const options = [];
-        let optionCount = type === "judge" ? 2 : type === "single" ? 4 : 5;
-
-        for (let j = 0; j < optionCount; j++) {
-          const optionId = String.fromCharCode(65 + j); // A, B, C, ...
-          options.push({
-            id: optionId,
-            text: `选项${optionId}的内容`,
-            isCorrect:
-              type === "judge"
-                ? j === 0
-                : type === "single"
-                ? j === 0
-                : [0, 2].includes(j),
-          });
-        }
-
-        questions.push({
-          id,
-          type,
-          content: `这是一道${categoryName}的${
-            type === "single" ? "单选" : type === "multiple" ? "多选" : "判断"
-          }题，难度为${difficulty}星，序号为${i + 1}`,
-          options,
-          analysis: `这道题的解析是...`,
-          difficulty,
-          category: categoryName,
-          isDone: Math.random() > 0.5,
-          isWrong: isWrong,
-          isFavorite: isFavorite,
-          images: [],
-        });
-      }
-
-      return questions;
-    },
-
-    // 初始化状态
+    // 初始化
     init() {
-      try {
-        // 从本地读取收藏和错题
-        const favoriteStr = uni.getStorageSync("favoriteQuestions");
-        if (favoriteStr) {
-          this.favoriteQuestions = JSON.parse(favoriteStr);
-        }
-
-        const wrongStr = uni.getStorageSync("wrongQuestions");
-        if (wrongStr) {
-          this.wrongQuestions = JSON.parse(wrongStr);
-        }
-      } catch (error) {
-        console.error("初始化题目存储失败:", error);
-      }
+      // 从本地加载错题和收藏
+      this.loadWrongQuestions();
+      this.loadFavorites();
     },
   },
 });

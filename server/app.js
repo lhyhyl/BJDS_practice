@@ -21,6 +21,9 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// 静态文件
+app.use(express.static('public'));
+
 // 路由
 app.use("/api", routes);
 

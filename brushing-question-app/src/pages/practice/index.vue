@@ -125,25 +125,25 @@ const hotCategories = ref([
     id: 'javascript',
     name: 'JavaScript',
     count: 512,
-    image: '/static/images/category/javascript.jpg'
+    image: '/static/images/category/JavaScript.png'
   },
   {
     id: 'react',
     name: 'React',
     count: 324,
-    image: '/static/images/category/react.jpg'
+    image: '/static/images/category/react.png'
   },
   {
     id: 'python',
     name: 'Python',
     count: 456,
-    image: '/static/images/category/python.jpg'
+    image: '/static/images/category/python.png'
   },
   {
     id: 'algorithm',
     name: '算法',
     count: 278,
-    image: '/static/images/category/algorithm.jpg'
+    image: '/static/images/category/algorithm.png'
   }
 ]);
 

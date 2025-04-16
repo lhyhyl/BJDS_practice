@@ -8,6 +8,13 @@
   },
   "pages": [
     {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "刷题宝",
@@ -80,26 +87,26 @@
       {
         "pagePath": "pages/index/index",
         "text": "首页",
-        "iconPath": "static/images/tabbar/home.png",
-        "selectedIconPath": "static/images/tabbar/home-active.png"
+        "iconPath": "static/images/home.png",
+        "selectedIconPath": "static/images/home-active.png"
       },
       {
         "pagePath": "pages/category/index",
         "text": "分类",
-        "iconPath": "static/images/tabbar/category.png",
-        "selectedIconPath": "static/images/tabbar/category-active.png"
+        "iconPath": "static/images/category.png",
+        "selectedIconPath": "static/images/category-active.png"
       },
       {
         "pagePath": "pages/practice/index",
         "text": "练习",
-        "iconPath": "static/images/tabbar/practice.png",
-        "selectedIconPath": "static/images/tabbar/practice-active.png"
+        "iconPath": "static/images/practice.png",
+        "selectedIconPath": "static/images/practice-active.png"
       },
       {
         "pagePath": "pages/mine/index",
         "text": "我的",
-        "iconPath": "static/images/tabbar/mine.png",
-        "selectedIconPath": "static/images/tabbar/mine-active.png"
+        "iconPath": "static/images/mine.png",
+        "selectedIconPath": "static/images/mine-active.png"
       }
     ]
   }

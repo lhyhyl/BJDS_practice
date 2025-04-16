@@ -1,4 +1,4 @@
-const { UserQuestion, Question, Subject } = require("../models");
+const { UserQuestion, Question, Subject } = require("../models/index");
 const { Op } = require("sequelize");
 
 class WrongQuestionController {

@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { sequelize } = require("../config/database");
 
 const User = sequelize.define(
   "User",
@@ -11,8 +11,8 @@ const User = sequelize.define(
     },
     openid: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: false,
+      unique: true,
     },
     nickname: {
       type: DataTypes.STRING,
@@ -38,13 +38,17 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
+    lastLoginAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     settings: {
       type: DataTypes.JSON,
-      defaultValue: {
-        autoSubmit: true,
-        fontSize: 16,
-        theme: "light",
-      },
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: "active",
     },
   },
   {
