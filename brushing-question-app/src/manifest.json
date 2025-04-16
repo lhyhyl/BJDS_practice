@@ -1,0 +1,23 @@
+{
+  "name": "刷题宝",
+  "appid": "wx3af1b469f18ac39f",
+  "description": "让刷题更简单",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "wx3af1b469f18ac39f",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "requiredBackgroundModes": [],
+    "permission": {},
+    "optimization": {
+      "subPackages": true
+    }
+  }
+} 

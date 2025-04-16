@@ -1,0 +1,18 @@
+/* uni.scss */
+@import '@dcloudio/uni-ui/lib/uni-scss/variables.scss';
+
+/* 自定义主题色 */
+$uni-primary: #1890ff;
+$uni-success: #52c41a;
+$uni-warning: #faad14;
+$uni-error: #f5222d;
+
+/* 文字尺寸 */
+$uni-font-size-sm: 24rpx;
+$uni-font-size-base: 28rpx;
+$uni-font-size-lg: 32rpx;
+
+/* 图片尺寸 */
+$uni-img-size-sm: 40rpx;
+$uni-img-size-base: 52rpx;
+$uni-img-size-lg: 80rpx; 
