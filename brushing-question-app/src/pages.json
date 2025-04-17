@@ -45,8 +45,8 @@
     {
       "path": "pages/practice/do",
       "style": {
-        "navigationBarTitleText": "做题",
-        "navigationStyle": "custom",
+        "navigationBarTitleText": "练习题",
+        "navigationStyle": "default",
         "enablePullDownRefresh": false
       }
     },

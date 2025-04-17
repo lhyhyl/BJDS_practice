@@ -1,31 +1,21 @@
 <template>
   <view class="container">
-    <!-- 顶部导航栏 -->
-    <view class="top-nav">
-      <view class="back-btn" @click="goBack">
-        <text class="back-icon">&#xe60e;</text>
-        <text>返回</text>
-      </view>
-      <view class="title">练习题</view>
-      <view class="placeholder"></view>
-    </view>
-
-    <!-- 加载状态 -->
-    <view class="loading" v-if="loading">
-      <text>加载中...</text>
-    </view>
-
     <!-- 题目内容 -->
-    <view class="question-container" v-else>
-      <!-- 进度条 -->
-      <view class="progress-bar">
-        <view class="progress" :style="{ width: `${(currentIndex + 1) / questions.length * 100}%` }"></view>
-        <text class="progress-text">{{ currentIndex + 1 }}/{{ questions.length }}</text>
-      </view>
+    <view class="question-container" v-if="!loading">
+      <!-- 进度条和计时器区域 -->
+      <view class="progress-timer-container">
+        <!-- 进度条 -->
+        <view class="progress-wrapper">
+          <view class="progress-bar">
+            <view class="progress" :style="{ width: `${(currentIndex + 1) / questions.length * 100}%` }"></view>
+          </view>
+          <text class="progress-text">{{ currentIndex + 1 }}/{{ questions.length }}</text>
+        </view>
 
-      <!-- 计时器 -->
-      <view class="timer">
-        <text>{{ formatTime(timeSpent) }}</text>
+        <!-- 计时器 -->
+        <view class="timer">
+          <text>{{ formatTime(timeSpent) }}</text>
+        </view>
       </view>
 
       <!-- 题目信息 -->
@@ -42,31 +32,46 @@
       <!-- 选项 -->
       <view class="options">
         <view v-for="(option, index) in currentQuestion.options" :key="index" class="option-item" :class="{
-            'selected': selectedAnswer === option,
-            'correct': showAnswer && option === currentQuestion.answer,
-            'wrong': showAnswer && selectedAnswer === option && option !== currentQuestion.answer
+  'selected': !showAnswer && selectedAnswer === option.id,
+  'correct': showAnswer && option.id === currentQuestion.answer,
+  'wrong': showAnswer && selectedAnswer === option.id && option.id !== currentQuestion.answer
 }" @click="selectAnswer(option)">
-          <text class="option-text">{{ option }}</text>
+          <view class="option-label">{{ option.id }}</view>
+          <text class="option-text">{{ option.content }}</text>
         </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="action-buttons">
-        <button class="submit-btn" :disabled="!selectedAnswer || showAnswer" @click="submitAnswer">
+        <button class="submit-btn" :disabled="!selectedAnswer && !showAnswer" @click="submitAnswer">
           {{ showAnswer ? '下一题' : '提交答案' }}
         </button>
-        <button class="report-btn" @click="reportQuestion">题目报错</button>
+        <!-- <button class="report-btn" @click="reportQuestion">题目报错</button> -->
       </view>
 
       <!-- 答案解析 -->
       <view class="answer-analysis" v-if="showAnswer">
-        <text class="analysis-title">答案解析</text>
-        <text class="analysis-content">{{ currentQuestion.analysis }}</text>
+        <view class="analysis-title">
+          <view class="analysis-icon"
+            :class="selectedAnswer === currentQuestion.answer ? 'correct-icon' : 'wrong-icon'">
+            <text>{{ selectedAnswer === currentQuestion.answer ? '✓' : '✗' }}</text>
+          </view>
+          <text>{{ selectedAnswer === currentQuestion.answer ? '回答正确' : '回答错误' }}</text>
+        </view>
+        <view class="analysis-content">
+          <view class="analysis-label">解析:</view>
+          <text>{{ currentQuestion.analysis }}</text>
+        </view>
       </view>
     </view>
 
+    <!-- 加载状态 -->
+    <view class="loading" v-if="loading">
+      <text>加载中...</text>
+    </view>
+
     <!-- 完成弹窗 -->
-    <uni-popup ref="completePopup" type="center">
+    <uni-popup ref="completePopup" type="center" @change="onPopupChange">
       <view class="complete-popup">
         <text class="popup-title">练习完成</text>
         <view class="popup-stats">
@@ -93,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
 import { useQuestionStore } from '@/store/question';
 import { useUserStore } from '@/store/user';
@@ -104,6 +109,8 @@ const userStore = useUserStore();
 const mode = ref('random');
 const category = ref('all');
 const lastIndex = ref(0);
+const categoryName = ref('');
+const questionId = ref('');
 
 // 题目数据
 const questions = ref([]);
@@ -123,7 +130,16 @@ const completePopup = ref(null);
 // 计算当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {});
 
-console.log('currentQuestion', currentQuestion.value);
+// 调试信息输出
+console.log('currentQuestion', currentQuestion);
+// 监视答案和选项
+watch(() => currentQuestion.value, (newVal) => {
+  if (newVal && newVal.answer) {
+    console.log('当前题目答案:', newVal.answer);
+    console.log('选项列表:', newVal.options);
+  }
+}, { immediate: true, deep: true });
+
 // 加载页面参数
 onLoad((options) => {
   console.log('接收到practice/do页面参数:', options); // 添加日志用于调试
@@ -156,14 +172,9 @@ onLoad((options) => {
 
 // 监听弹窗关闭事件
 onMounted(() => {
-  // 需要在模板引用可用后设置弹窗关闭事件
-  nextTick(() => {
-    if (completePopup.value) {
-      completePopup.value.$on('close', () => {
-        // 弹窗关闭时返回上一级
-        navigateBackOrHome();
-      });
-    }
+  // 设置自定义导航栏
+  uni.setNavigationBarTitle({
+    title: '练习题'
   });
 });
 
@@ -186,7 +197,25 @@ async function loadQuestions() {
       mask: true
     });
 
-    const questionList = await questionStore.loadQuestions(mode.value, category.value);
+    // 处理从URL参数中接收的IDs
+    let params = {};
+    if (mode.value === 'sequential' || mode.value === 'random') {
+      const idsParam = uni.getStorageSync('sequential_question_ids');
+      if (idsParam) {
+        try {
+          const idsArray = JSON.parse(idsParam);
+          if (Array.isArray(idsArray) && idsArray.length > 0) {
+            params.ids = idsArray;
+            // 清除存储，避免重复使用
+            uni.removeStorageSync('sequential_question_ids');
+          }
+        } catch (e) {
+          console.error('解析题目ID失败:', e);
+        }
+      }
+    }
+
+    const questionList = await questionStore.loadQuestions(mode.value, category.value, params);
     console.log('questionList', questionList);
     if (!questionList || questionList.length === 0) {
       uni.showToast({
@@ -234,7 +263,7 @@ async function loadQuestions() {
 // 选择答案
 function selectAnswer(option) {
   if (!showAnswer.value) {
-    selectedAnswer.value = option;
+    selectedAnswer.value = option.id;
   }
 }
 
@@ -254,8 +283,15 @@ function submitAnswer() {
   } else {
     // 显示答案
     showAnswer.value = true;
+    console.log('提交答案:', selectedAnswer.value);
+    console.log('正确答案:', currentQuestion.value.answer);
+
+    // 检查答案是否正确
     if (selectedAnswer.value === currentQuestion.value.answer) {
       correctCount.value++;
+      console.log('答案正确!');
+    } else {
+      console.log('答案错误!');
     }
   }
 }
@@ -306,6 +342,13 @@ function startTimer() {
   }, 1000);
 }
 
+// 格式化时间
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes < 10 ? '0' + minutes : minutes}:${secs < 10 ? '0' + secs : secs}`;
+}
+
 // 保存进度
 function saveProgress() {
   if (mode.value === 'sequential' && category.value !== 'all') {
@@ -333,6 +376,16 @@ function getCategoryName(categoryId) {
 
   return categories[categoryId] || categoryId;
 }
+
+// 监听弹窗变化
+function onPopupChange(e) {
+  if (e.show === false) {
+    // 弹窗关闭时返回上一级
+    setTimeout(() => {
+      navigateBackOrHome();
+    }, 200);
+  }
+}
 </script>
 
 <style>
@@ -341,38 +394,9 @@ function getCategoryName(categoryId) {
   display: flex;
   flex-direction: column;
   background-color: #f8f8f8;
+  padding-top: 20rpx;
 }
 
-/* 顶部导航栏样式 */
-.top-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10rpx 20rpx;
-  background-color: #fff;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  padding: 10rpx;
-}
-
-.back-icon {
-  font-family: 'iconfont';
-  margin-right: 6rpx;
-  font-size: 32rpx;
-}
-
-.title {
-  font-size: 32rpx;
-  font-weight: bold;
-}
-
-.placeholder {
-  width: 60rpx;
-}
 .loading {
   flex: 1;
   display: flex;
@@ -392,8 +416,13 @@ function getCategoryName(categoryId) {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -407,27 +436,50 @@ function getCategoryName(categoryId) {
   flex: 1;
 }
 
+.progress-timer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15rpx 20rpx;
+  background-color: #fff;
+  border-radius: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.progress-wrapper {
+  flex: 1;
+  margin-right: 20rpx;
+}
+
 .progress-bar {
   height: 6rpx;
   background: #eee;
   border-radius: 3rpx;
-  margin-top: 10rpx;
-  width: 200rpx;
+  margin-bottom: 10rpx;
+  width: 100%;
+  position: relative;
 }
 
-.progress-inner {
+.progress {
   height: 100%;
   background: #1890ff;
   border-radius: 3rpx;
   transition: width 0.3s;
 }
 
+.progress-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
 .timer {
   font-size: 28rpx;
   color: #666;
   background: #f5f5f5;
-  padding: 6rpx 20rpx;
+  padding: 8rpx 18rpx;
   border-radius: 20rpx;
+  min-width: 120rpx;
+  text-align: center;
 }
 
 .question-info {
@@ -494,98 +546,116 @@ function getCategoryName(categoryId) {
 .option-item {
   display: flex;
   align-items: center;
-  padding: 20rpx;
+  padding: 24rpx 30rpx;
   background: #fff;
   border-radius: 12rpx;
   margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
 }
 
 .option-item.selected {
   background: #e6f7ff;
-  border: 2rpx solid #1890ff;
+  border: 1px solid #1890ff;
 }
 
 .option-item.correct {
   background: #f6ffed;
-  border: 2rpx solid #52c41a;
+  border: 1px solid #52c41a;
 }
 
 .option-item.wrong {
   background: #fff1f0;
-  border: 2rpx solid #ff4d4f;
+  border: 1px solid #ff4d4f;
 }
 
 .option-label {
-  width: 60rpx;
-  height: 60rpx;
-  line-height: 60rpx;
+  min-width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
   text-align: center;
-  border-radius: 30rpx;
-  background: #f5f5f5;
-  margin-right: 20rpx;
+  border-radius: 24rpx;
   font-size: 28rpx;
+  font-weight: bold;
+  margin-right: 20rpx;
+  color: #666;
+  background: #f5f5f5;
+}
+
+.option-item.selected .option-label {
+  background: #1890ff;
+  color: #fff;
+}
+
+.option-item.correct .option-label {
+  background: #52c41a;
+  color: #fff;
+}
+
+.option-item.wrong .option-label {
+  background: #ff4d4f;
+  color: #fff;
 }
 
 .option-text {
   flex: 1;
   font-size: 30rpx;
   color: #333;
+  line-height: 1.5;
 }
 
 .answer-analysis {
   background: #fff;
   border-radius: 12rpx;
-  padding: 20rpx;
-  margin-bottom: 20rpx;
-}
-
-.result-banner {
-  display: flex;
-  align-items: center;
-  padding: 15rpx;
-  border-radius: 8rpx;
-  margin-bottom: 20rpx;
-}
-
-.correct-banner {
-  background: rgba(82, 196, 26, 0.1);
-}
-
-.wrong-banner {
-  background: rgba(255, 77, 79, 0.1);
-}
-
-.result-icon {
-  font-size: 36rpx;
-  margin-right: 10rpx;
-}
-
-.result-text {
-  font-size: 30rpx;
-  font-weight: bold;
-}
-
-.correct-answer {
-  margin-bottom: 20rpx;
+  padding: 30rpx;
+  margin: 30rpx 0;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .analysis-title {
-  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  font-size: 32rpx;
   font-weight: bold;
   color: #333;
-  margin-bottom: 10rpx;
+  margin-bottom: 20rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.analysis-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  margin-right: 16rpx;
+  font-size: 30rpx;
+}
+
+.correct-icon {
+  background: #52c41a;
+  color: #fff;
+}
+
+.wrong-icon {
+  background: #ff4d4f;
+  color: #fff;
 }
 
 .analysis-content {
   font-size: 28rpx;
   color: #666;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-.correct-options {
-  font-size: 28rpx;
-  color: #52c41a;
+.analysis-label {
   font-weight: bold;
+  margin-bottom: 10rpx;
+  color: #333;
 }
 
 .action-buttons {
@@ -593,58 +663,24 @@ function getCategoryName(categoryId) {
   margin-top: 20rpx;
 }
 
-.action-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  padding: 15rpx 0;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 8rpx;
-  margin: 0 10rpx;
-}
-
-.btn-icon {
-  margin-right: 8rpx;
-}
-
-.bottom-bar {
-  padding: 20rpx;
-  background: #fff;
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-  display: flex;
-}
-
-.submit-btn, .prev-btn, .next-btn {
-  flex: 1;
-  height: 80rpx;
-  line-height: 80rpx;
-  text-align: center;
-  border-radius: 40rpx;
-  font-size: 30rpx;
-  margin: 0 10rpx;
-}
-
 .submit-btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  margin: 0 40rpx;
   background: #1890ff;
   color: #fff;
+  font-weight: bold;
+  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.2);
 }
 
 .submit-btn[disabled] {
   background: #cccccc;
   color: #ffffff;
-}
-
-.prev-btn {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.next-btn {
-  background: #1890ff;
-  color: #fff;
+  box-shadow: none;
 }
 
 .report-popup, .finish-popup {

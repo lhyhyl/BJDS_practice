@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const errorBookController = require("../controllers/errorBookController");
-const authMiddleware = require('../middlewares/authMiddleware');
+const authMiddleware = require("../middlewares/authMiddleware");
 
 // 获取错题本列表
 router.get("/", authMiddleware, errorBookController.getErrorQuestions);

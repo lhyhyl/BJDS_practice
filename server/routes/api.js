@@ -6,11 +6,13 @@ const subjectController = require("../controllers/subjectController");
 const favoriteController = require("../controllers/favoriteController");
 const errorBookController = require("../controllers/errorBookController");
 const statisticsController = require("../controllers/statisticsController");
-const auth = require("../middlewares/auth");
+const studyPlanController = require("../controllers/studyPlanController");
+const authMiddleware = require("../middlewares/authMiddleware");
+const studyPlanRoutes = require("./studyPlan");
 
 // 用户相关路由
 router.post("/user/login", userController.login);
-router.put("/user/settings", auth, userController.updateSettings);
+router.put("/user/settings", authMiddleware, userController.updateSettings);
 
 // 科目相关路由
 router.get("/subjects", subjectController.getSubjects);
@@ -22,24 +24,43 @@ router.get("/questions", questionController.getQuestions);
 router.get("/questions/daily", questionController.getDailyQuestion);
 router.get("/questions/search", questionController.searchQuestions);
 router.get("/questions/:id", questionController.getQuestion);
-router.post("/questions/submit", auth, questionController.submitAnswer);
+router.post(
+  "/questions/submit",
+  authMiddleware,
+  questionController.submitAnswer
+);
 
 // 收藏相关路由
-router.get("/favorites", auth, favoriteController.getFavorites);
-router.post("/favorites", auth, favoriteController.addFavorite);
-router.delete("/favorites/:id", auth, favoriteController.removeFavorite);
+router.get("/favorites", authMiddleware, favoriteController.getFavorites);
+router.post("/favorites", authMiddleware, favoriteController.addFavorite);
+router.delete(
+  "/favorites/:questionId",
+  authMiddleware,
+  favoriteController.removeFavorite
+);
 
 // 错题本相关路由
-router.get("/wrongquestions", auth, errorBookController.getWrongQuestions);
-router.post("/errorbook", auth, errorBookController.addToErrorBook);
-router.delete("/errorbook/:id", auth, errorBookController.removeFromErrorBook);
+router.get("/errorbook", authMiddleware, errorBookController.getErrorQuestions);
+router.post("/errorbook", authMiddleware, errorBookController.addErrorQuestion);
+router.delete(
+  "/errorbook/:questionId",
+  authMiddleware,
+  errorBookController.deleteErrorQuestion
+);
 
 // 统计相关路由
 router.get(
   "/statistics/progress",
-  auth,
+  authMiddleware,
   statisticsController.getCategoryProgress
 );
-router.get("/statistics/overview", auth, statisticsController.getUserOverview);
+router.get(
+  "/statistics/overview",
+  authMiddleware,
+  statisticsController.getUserOverview
+);
+
+// 学习计划相关路由
+router.use("/study-plans", studyPlanRoutes);
 
 module.exports = router;

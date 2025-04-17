@@ -7,7 +7,11 @@ const UserQuestion = require("./userQuestion");
 const Favorite = require("./favorite");
 const StudyRecord = require("./studyRecord");
 const ErrorBook = require("./errorBook");
+const StudyPlanInit = require("./StudyPlan");
 const { sequelize } = require("../config/database");
+
+// 初始化需要函数调用的模型
+const StudyPlan = StudyPlanInit(sequelize);
 
 // 定义模型之间的关系
 // User 关联
@@ -16,6 +20,7 @@ User.hasMany(UserQuestion, { foreignKey: "userId" });
 User.hasMany(Favorite, { foreignKey: "userId" });
 User.hasMany(StudyRecord, { foreignKey: "userId" });
 User.hasMany(ErrorBook, { foreignKey: "userId" });
+User.hasMany(StudyPlan, { foreignKey: "userId" });
 
 // Question 关联
 Question.hasMany(Practice, { foreignKey: "questionId" });
@@ -28,6 +33,7 @@ Question.belongsTo(Chapter, { foreignKey: "chapterId" });
 // Subject 关联
 Subject.hasMany(Question, { foreignKey: "subjectId" });
 Subject.hasMany(Chapter, { foreignKey: "subjectId" });
+Subject.hasMany(StudyPlan, { foreignKey: "categoryId" });
 
 // Chapter 关联
 Chapter.belongsTo(Subject, { foreignKey: "subjectId" });
@@ -52,6 +58,10 @@ StudyRecord.belongsTo(User, { foreignKey: "userId" });
 ErrorBook.belongsTo(User, { foreignKey: "userId" });
 ErrorBook.belongsTo(Question, { foreignKey: "questionId" });
 
+// StudyPlan 关联
+StudyPlan.belongsTo(User, { foreignKey: "userId" });
+StudyPlan.belongsTo(Subject, { foreignKey: "categoryId" });
+
 module.exports = {
   User,
   Question,
@@ -62,5 +72,6 @@ module.exports = {
   Favorite,
   StudyRecord,
   ErrorBook,
+  StudyPlan,
   sequelize,
 };

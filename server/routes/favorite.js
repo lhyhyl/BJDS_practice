@@ -13,7 +13,7 @@ router.post("/", authMiddleware, favoriteController.addFavorite);
 router.delete(
   "/:questionId",
   authMiddleware,
-  favoriteController.deleteFavorite
+  favoriteController.removeFavorite
 );
 
 module.exports = router;

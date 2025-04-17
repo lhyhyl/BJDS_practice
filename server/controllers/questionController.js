@@ -1,4 +1,9 @@
-const { Question, UserQuestion, Subject } = require("../models/index");
+const {
+  Question,
+  UserQuestion,
+  Subject,
+  StudyPlan,
+} = require("../models/index");
 const { Op } = require("sequelize");
 const sequelize = require("sequelize");
 
@@ -176,6 +181,31 @@ class QuestionController {
         });
       }
 
+      // 如果答错，自动添加到错题本
+      if (!isCorrect) {
+        try {
+          const ErrorBook = require("../models/errorBook");
+          // 检查是否已存在于错题本
+          const existingError = await ErrorBook.findOne({
+            where: { userId, questionId },
+          });
+
+          // 不存在则添加
+          if (!existingError) {
+            await ErrorBook.create({
+              userId,
+              questionId,
+            });
+            console.log(
+              `题目 ${questionId} 已自动添加到用户 ${userId} 的错题本`
+            );
+          }
+        } catch (errorBookError) {
+          console.error("添加到错题本失败:", errorBookError);
+          // 不中断主流程
+        }
+      }
+
       // 尝试更新用户统计
       try {
         if (req.user.update) {
@@ -209,6 +239,7 @@ class QuestionController {
             correctCount: req.user.correctCount || 0,
             correctRate: req.user.correctRate || 0,
           },
+          addedToErrorBook: !isCorrect, // 通知前端错题已自动添加
         },
       });
     } catch (error) {
@@ -352,6 +383,54 @@ class QuestionController {
     } catch (error) {
       console.error("Get daily questions error:", error);
       res.status(500).json({ code: 500, message: "获取每日推荐题目失败" });
+    }
+  }
+
+  // 根据学习计划获取题目
+  async getPlanQuestions(req, res) {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.query;
+
+      if (!planId) {
+        return res.status(400).json({
+          code: 400,
+          message: "计划ID不能为空",
+        });
+      }
+
+      // 查找计划
+      const plan = await StudyPlan.findOne({
+        where: { id: planId, userId },
+      });
+
+      if (!plan) {
+        return res.status(404).json({
+          code: 404,
+          message: "计划不存在",
+        });
+      }
+
+      // 获取该分类下的题目，数量为计划的每日题目数
+      const questions = await Question.findAll({
+        where: {
+          subjectId: plan.categoryId,
+        },
+        order: sequelize.literal("RAND()"),
+        limit: plan.questionsPerDay,
+      });
+
+      return res.json({
+        code: 0,
+        data: questions,
+        message: "获取计划题目成功",
+      });
+    } catch (error) {
+      console.error("获取计划题目失败:", error);
+      return res.status(500).json({
+        code: 500,
+        message: "获取计划题目失败",
+      });
     }
   }
 }

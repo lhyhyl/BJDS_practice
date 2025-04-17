@@ -1,4 +1,4 @@
-const { UserQuestion, Question, Subject } = require("../models/index");
+const { UserQuestion, Question, Subject, User } = require("../models/index");
 const { Op } = require("sequelize");
 const sequelize = require("sequelize");
 
@@ -189,7 +189,11 @@ class StatisticsController {
         });
       } catch (error) {
         // 如果表不存在，则返回空数据
-        if (error.name === 'SequelizeDatabaseError' && error.parent && error.parent.code === 'ER_NO_SUCH_TABLE') {
+        if (
+          error.name === "SequelizeDatabaseError" &&
+          error.parent &&
+          error.parent.code === "ER_NO_SUCH_TABLE"
+        ) {
           console.warn("学习统计表不存在，返回空数据");
           stats = [{ totalQuestions: 0, correctCount: 0, averageTime: 0 }];
           recentRecords = [];
@@ -273,7 +277,11 @@ class StatisticsController {
         });
       } catch (error) {
         // 如果表不存在，则使用空数据
-        if (error.name === 'SequelizeDatabaseError' && error.parent && error.parent.code === 'ER_NO_SUCH_TABLE') {
+        if (
+          error.name === "SequelizeDatabaseError" &&
+          error.parent &&
+          error.parent.code === "ER_NO_SUCH_TABLE"
+        ) {
           console.warn("学习统计表不存在，返回空数据");
           userQuestions = [];
           questionCounts = [];
@@ -320,6 +328,133 @@ class StatisticsController {
     } catch (error) {
       console.error("Get progress error:", error);
       return res.status(500).json({ code: 500, message: "获取学习进度失败" });
+    }
+  }
+
+  // 获取用户每日统计和连续打卡信息
+  async getDailyStatistics(req, res) {
+    try {
+      const userId = req.user.id;
+
+      // 获取用户
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: "用户不存在",
+        });
+      }
+
+      // 获取最近7天的日期
+      const dates = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        dates.push(date.toISOString().split("T")[0]);
+      }
+
+      // 获取最近7天的做题记录
+      const dailyStats = await UserQuestion.findAll({
+        attributes: [
+          [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
+          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        ],
+        where: {
+          userId,
+          createdAt: {
+            [Op.gte]: new Date(dates[0]),
+          },
+        },
+        group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
+        raw: true,
+      });
+
+      // 格式化数据
+      const formattedStats = dates.map((date) => {
+        const stat = dailyStats.find((s) => s.date === date);
+        return {
+          date,
+          count: stat ? parseInt(stat.count) : 0,
+          isToday: date === new Date().toISOString().split("T")[0],
+        };
+      });
+
+      return res.json({
+        code: 0,
+        data: {
+          dailyStats: formattedStats,
+          streak: user.streak || 0,
+          todayCount: formattedStats[6].count, // 今日题目数
+        },
+        message: "获取每日统计成功",
+      });
+    } catch (error) {
+      console.error("获取每日统计失败:", error);
+      return res.status(500).json({
+        code: 500,
+        message: "获取每日统计失败",
+      });
+    }
+  }
+
+  // 更新连续打卡天数
+  async updateStreak(req, res) {
+    try {
+      const userId = req.user.id;
+
+      // 获取用户
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: "用户不存在",
+        });
+      }
+
+      // 获取用户最后一次做题的日期
+      const lastRecord = await UserQuestion.findOne({
+        where: { userId },
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (!lastRecord) {
+        // 没有做题记录，设置为1天
+        user.streak = 1;
+      } else {
+        // 计算最后一次做题日期与今天的差距
+        const lastDate = new Date(lastRecord.createdAt);
+        lastDate.setHours(0, 0, 0, 0);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.round((today - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // 连续做题
+          user.streak = (user.streak || 0) + 1;
+        } else if (diffDays > 1) {
+          // 中断，重新计算
+          user.streak = 1;
+        }
+        // 如果是同一天，不变
+      }
+
+      await user.save();
+
+      return res.json({
+        code: 0,
+        data: {
+          streak: user.streak,
+        },
+        message: "更新连续打卡成功",
+      });
+    } catch (error) {
+      console.error("更新连续打卡失败:", error);
+      return res.status(500).json({
+        code: 500,
+        message: "更新连续打卡失败",
+      });
     }
   }
 }

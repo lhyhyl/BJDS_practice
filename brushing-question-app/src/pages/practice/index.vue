@@ -165,6 +165,28 @@ const maxCount = computed(() => {
 
 onMounted(() => {
   loadWeekData();
+
+  // 检查是否需要打开练习页面
+  const shouldOpenPractice = uni.getStorageSync('should_open_practice');
+  if (shouldOpenPractice) {
+    // 获取存储的练习参数
+    const questionIds = uni.getStorageSync('sequential_question_ids');
+    const practiceMode = uni.getStorageSync('practice_mode');
+    const categoryId = uni.getStorageSync('category_id');
+    const categoryName = uni.getStorageSync('category_name');
+
+    // 清除标志避免重复跳转
+    uni.removeStorageSync('should_open_practice');
+
+    // 如果有有效的参数，则跳转到练习页面
+    if (questionIds && practiceMode) {
+      setTimeout(() => {
+        uni.navigateTo({
+          url: `/pages/practice/do?mode=${practiceMode}&category=${categoryId}&name=${encodeURIComponent(categoryName)}&ids=${questionIds}`
+        });
+      }, 300); // 延迟跳转，确保页面已完全加载
+    }
+  }
 });
 
 // 加载周数据
@@ -185,6 +207,8 @@ function loadWeekData() {
 
 // 开始练习
 function startPractice(mode) {
+  // 直接使用 navigateTo 导航到 do.vue 页面
+  // 这个不是 tabBar 页面跳转，所以可以使用 navigateTo
   uni.navigateTo({
     url: `/pages/practice/do?mode=${mode}`
   });

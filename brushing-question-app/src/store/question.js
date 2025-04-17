@@ -16,16 +16,16 @@ export const useQuestionStore = defineStore("question", {
 
   actions: {
     // 加载题目
-    async loadQuestions(mode, category) {
+    async loadQuestions(mode, category, params = {}) {
       try {
         console.log(`加载题目：模式=${mode}, 分类=${category}`);
 
         // 使用真实API请求
         let url = "/api/questions";
-        let params = {};
+        let requestParams = { ...params };
 
         if (mode === "wrong") {
-          url = "/api/wrongquestions";
+          url = "/api/errorbook";
         } else if (mode === "favorite") {
           url = "/api/favorites";
         } else if (mode === "daily") {
@@ -33,19 +33,23 @@ export const useQuestionStore = defineStore("question", {
         } else {
           // 普通模式，可以按分类筛选
           if (category && category !== "all") {
-            params.subjectId = category;
+            requestParams.subjectId = category;
+          }
+
+          // 如果有指定的题目IDs
+          if (params.ids && Array.isArray(params.ids)) {
+            requestParams.ids = params.ids.join(",");
           }
         }
 
         const response = await request({
           url,
           method: "GET",
-          data: params,
+          data: requestParams,
         });
         if (response.code === 0 && response.data) {
           this.questions = response.data;
-          console.log("this.questions", this.questions);
-          return response.data;
+          return response.data.list;
         }
 
         return [];

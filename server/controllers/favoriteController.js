@@ -32,20 +32,43 @@ exports.getFavorites = async (req, res) => {
       distinct: true,
     });
 
+    // 处理数据，提取Question模型数据作为主要数据
+    const questions = rows
+      .map((item) => {
+        const question = item.Question;
+        if (!question) return null;
+
+        return {
+          id: question.id,
+          content: question.content,
+          options: question.options,
+          answer: question.answer,
+          analysis: question.analysis,
+          subjectId: question.subjectId,
+          difficulty: question.difficulty,
+          favoriteId: item.id,
+          addedAt: item.createdAt,
+        };
+      })
+      .filter((q) => q !== null);
+
     return res.json({
-      success: true,
+      code: 0,
       data: {
         total: count,
-        items: rows,
-        page,
-        pageSize,
+        totalPages: Math.ceil(count / pageSize),
+        currentPage: page,
+        pageSize: pageSize,
+        list: questions,
+        hasMore: offset + questions.length < count,
       },
+      message: "获取收藏列表成功",
     });
   } catch (error) {
     logger.error("获取收藏问题失败:", error);
     return res
       .status(500)
-      .json({ success: false, message: "获取收藏问题失败" });
+      .json({ code: 500, message: "获取收藏问题失败", error: error.message });
   }
 };
 
@@ -58,15 +81,13 @@ exports.addFavorite = async (req, res) => {
     const userId = req.user.id;
 
     if (!questionId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "问题ID不能为空" });
+      return res.status(400).json({ code: 400, message: "问题ID不能为空" });
     }
 
     // 检查问题是否存在
     const question = await Question.findByPk(questionId);
     if (!question) {
-      return res.status(404).json({ success: false, message: "问题不存在" });
+      return res.status(404).json({ code: 404, message: "问题不存在" });
     }
 
     // 检查是否已收藏
@@ -75,25 +96,29 @@ exports.addFavorite = async (req, res) => {
     });
 
     if (existingFavorite) {
-      return res
-        .status(400)
-        .json({ success: false, message: "该问题已在收藏夹中" });
+      return res.status(409).json({ code: 409, message: "该问题已在收藏夹中" });
     }
 
     // 创建收藏记录
-    await Favorite.create({ userId, questionId });
+    const favorite = await Favorite.create({ userId, questionId });
 
-    return res.json({ success: true, message: "收藏成功" });
+    return res.json({
+      code: 0,
+      message: "收藏成功",
+      data: favorite,
+    });
   } catch (error) {
     logger.error("添加收藏失败:", error);
-    return res.status(500).json({ success: false, message: "添加收藏失败" });
+    return res
+      .status(500)
+      .json({ code: 500, message: "添加收藏失败", error: error.message });
   }
 };
 
 /**
  * 从收藏夹中删除问题
  */
-exports.deleteFavorite = async (req, res) => {
+exports.removeFavorite = async (req, res) => {
   try {
     const { questionId } = req.params;
     const userId = req.user.id;
@@ -103,14 +128,14 @@ exports.deleteFavorite = async (req, res) => {
     });
 
     if (result === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "收藏记录不存在" });
+      return res.status(404).json({ code: 404, message: "收藏记录不存在" });
     }
 
-    return res.json({ success: true, message: "取消收藏成功" });
+    return res.json({ code: 0, message: "取消收藏成功" });
   } catch (error) {
     logger.error("删除收藏失败:", error);
-    return res.status(500).json({ success: false, message: "删除收藏失败" });
+    return res
+      .status(500)
+      .json({ code: 500, message: "删除收藏失败", error: error.message });
   }
 };

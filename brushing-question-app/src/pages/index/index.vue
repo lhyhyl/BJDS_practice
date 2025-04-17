@@ -191,7 +191,7 @@ const navigateToCategory = (categoryId) => {
 // 开始练习
 const startPractice = (mode) => {
   if (mode === 'sequential') {
-    uni.navigateTo({
+    uni.switchTab({
       url: '/pages/category/index'
     });
   } else {

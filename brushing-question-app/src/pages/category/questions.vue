@@ -409,8 +409,19 @@ function startSequentialQuestions() {
     return;
   }
   
-  uni.navigateTo({
-    url: `/pages/practice/do?mode=sequential&ids=${ids.join(',')}`
+  // 存储题目ID到本地存储，以便practice/do页面读取
+  uni.setStorageSync('sequential_question_ids', JSON.stringify(ids));
+  uni.setStorageSync('practice_mode', 'sequential');
+  uni.setStorageSync('category_id', categoryId.value);
+  uni.setStorageSync('category_name', categoryName.value);
+  
+  // 使用switchTab跳转到练习页面
+  uni.switchTab({
+    url: '/pages/practice/index',
+    success: () => {
+      // 设置一个标志，让practice/index页面知道需要打开练习页面
+      uni.setStorageSync('should_open_practice', true);
+    }
   });
 }
 
